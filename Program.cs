@@ -14,8 +14,9 @@ namespace MergeExcel {
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault( false );
-            //Application.Run( new FormAttend() );
-            Application.Run( new Form_RegexExam() );
+            // Application.Run( new Form_MergeExcel() );
+            Application.Run( new Form_Attend() );
+            //Application.Run( new Form_RegexExam() );
         }
     }
 }

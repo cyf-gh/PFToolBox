@@ -2,15 +2,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace MergeExcel {
@@ -40,6 +34,17 @@ namespace MergeExcel {
         {
             return a == 0 ? 1 : a;
         } 
+        int HHMM2H( string a ) {
+            if ( a == "0" ) {
+                return 0;
+            }
+            var p = new Regex( @"(?<h>[\S]+)小时(?<m>[\S])+分钟" );
+            Match m = p.Match( a );
+            if ( m.Success ) {
+                return Convert.ToInt32( m.Groups["h"].Value ) * 60 + Convert.ToInt32( m.Groups["m"].Value );
+            }
+            return 0;
+        }
         private void button1_Click( Object sender, EventArgs e )
         {
             var fileContent = string.Empty;
@@ -51,6 +56,13 @@ namespace MergeExcel {
 
                 if ( openFileDialog.ShowDialog() == DialogResult.OK ) {
                     filePath = openFileDialog.FileName;
+                    if ( checkBox1.Checked ) {
+                        filePath += ".copy.xlsx";
+                        if ( File.Exists( filePath ) ) {
+                            File.Delete( filePath );
+                        }
+                        File.Copy( openFileDialog.FileName, filePath );
+                    }
                     try {
                         stream = File.Open( filePath, FileMode.Open, FileAccess.Read );
                     } catch ( Exception ex ) {
@@ -71,27 +83,28 @@ namespace MergeExcel {
                     for ( int ii = 0; ii < ts[0].Rows.Count; ii++ ) {
                         var d = ts[0].Rows[ii];
                         var r = d.ItemArray;
+                        // group
                         var key = r[ColI( 'B' )].ToString();
                         if ( !dic.ContainsKey( key ) ) {
                             dic[key] = new Row();
                         }
                         dic[key].D[0]++; // 人数
 
-                        var d1 = ToInt( r[ColI( 'G' )].ToString() );
+                        var d1 = ToInt( r[ColI( 'F' )].ToString() );
                         dic[key].D[1] += d1; // 平均值项:出勤天数
                         dic[key].AVG[1] += d1 == 0 ? 0 : 1;
 
 
-                        var d3 = ToInt( r[ColI( 'I' )].ToString() );
+                        var d3 = HHMM2H( r[ColI( 'H' )].ToString() );
                         dic[key].D[2] += d1 == 0 ? 0 : ( d3 / d1 / 60 ); // 平均值项:工作时长(小时)
                         dic[key].AVG[2] += d3 == 0 ? 0 : 1;
 
-                        dic[key].D[3] += ToInt( r[ColI( 'U' )].ToString() ); // 求和项:外出时长
-                        dic[key].D[4] += ToInt( r[ColI( 'J' )].ToString() ); // 求和项:迟到次数
-                        dic[key].D[5] += ToInt( r[ColI( 'O' )].ToString() ); // 求和项:早退次数
-                        dic[key].D[6] += ToInt( r[ColI( 'Q' )].ToString() ); // 求和项:上班缺卡次数
-                        dic[key].D[7] += ToInt( r[ColI( 'R' )].ToString() ); // 求和项:下班缺卡次数
-                        dic[key].D[8] += ToInt( r[ColI( 'S' )].ToString() ); // 求和项: 旷工天数
+                        dic[key].D[3] += ToInt( r[ColI( 'T' )].ToString() ); // 求和项:外出时长
+                        dic[key].D[4] += ToInt( r[ColI( 'I' )].ToString() ); // 求和项:迟到次数
+                        dic[key].D[5] += ToInt( r[ColI( 'N' )].ToString() ); // 求和项:早退次数
+                        dic[key].D[6] += ToInt( r[ColI( 'P' )].ToString() ); // 求和项:上班缺卡次数
+                        dic[key].D[7] += ToInt( r[ColI( 'Q' )].ToString() ); // 求和项:下班缺卡次数
+                        dic[key].D[8] += ToInt( r[ColI( 'R' )].ToString() ); // 求和项: 旷工天数
                     }
                     dic.Remove( "" );
                     dic.Remove( "考勤组" );
@@ -150,12 +163,13 @@ namespace MergeExcel {
                         xlWorkSheet.Cells[i, @is] = s;
                         @is++;
                     }
-                    var ff = Path.Combine( Environment.CurrentDirectory, "最终结果.xlsx" );
+                    var now = DateTime.Now.ToString( "MM-dd-yyyy-HH-mm-ss" );
+                    var ff = Path.Combine( Environment.CurrentDirectory, $"最终结果{now}.xlsx" );
                     SAVE:
                     try {
                         xlWorkBook.SaveCopyAs( ff );
                     } catch ( Exception ex ) {
-                        MessageBox.Show($"{ex.Message}\n请重试");
+                        MessageBox.Show($"{ex.Message}\n please retry");
                         goto SAVE;
                         throw;
                     }
@@ -171,14 +185,14 @@ namespace MergeExcel {
 
                      列      列数据
 
-                     G      出勤天数
-                     U      外出时长
-                     I      工作时长(小时)
-                     J      迟到次数
-                     O      早退次数
-                     Q      上班缺卡次数
-                     R      下班缺卡次数
-                     S      旷工天数";
+                     F      出勤天数
+                     T      外出时长
+                     H      工作时长(小时)
+                     I      迟到次数
+                     N      早退次数
+                     P      上班缺卡次数
+                     Q      下班缺卡次数
+                     R      旷工天数";
         }
     }
 }

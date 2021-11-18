@@ -28,13 +28,15 @@ namespace MergeExcel {
         {
             this.button1 = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
+            this.checkBox1 = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(12, 12);
+            this.button1.Location = new System.Drawing.Point(11, 10);
+            this.button1.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(139, 35);
+            this.button1.Size = new System.Drawing.Size(124, 29);
             this.button1.TabIndex = 0;
             this.button1.Text = "打开原始表";
             this.button1.UseVisualStyleBackColor = true;
@@ -43,20 +45,34 @@ namespace MergeExcel {
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(12, 60);
+            this.label1.Location = new System.Drawing.Point(11, 50);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(62, 18);
+            this.label1.Size = new System.Drawing.Size(55, 15);
             this.label1.TabIndex = 1;
             this.label1.Text = "label1";
             // 
-            // FormAttend
+            // checkBox1
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 18F);
+            this.checkBox1.AutoSize = true;
+            this.checkBox1.Checked = true;
+            this.checkBox1.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBox1.Location = new System.Drawing.Point(141, 12);
+            this.checkBox1.Name = "checkBox1";
+            this.checkBox1.Size = new System.Drawing.Size(144, 19);
+            this.checkBox1.TabIndex = 2;
+            this.checkBox1.Text = "热打开Excel表格";
+            this.checkBox1.UseVisualStyleBackColor = true;
+            // 
+            // Form_Attend
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
+            this.ClientSize = new System.Drawing.Size(711, 375);
+            this.Controls.Add(this.checkBox1);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.button1);
-            this.Name = "FormAttend";
+            this.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
+            this.Name = "Form_Attend";
             this.Text = "FormAttend";
             this.Load += new System.EventHandler(this.FormAttend_Load);
             this.ResumeLayout(false);
@@ -68,5 +84,6 @@ namespace MergeExcel {
 
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.CheckBox checkBox1;
     }
 }
