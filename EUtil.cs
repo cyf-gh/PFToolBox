@@ -12,6 +12,7 @@ using System.Windows.Forms;
 namespace MergeExcel {
     public class EUtil {
         FileStream stream = null;
+        string strTmpExcelPath = string.Empty;
         public IExcelDataReader ExcelDataReader { get; set; }
         public DataTableCollection Tables { get; set; }
         public DataTable GetTableByName( string tableName )
@@ -23,6 +24,12 @@ namespace MergeExcel {
             }
             return null;
         }
+        public void ClearTempExcelFile()
+        {
+            if ( File.Exists( strTmpExcelPath ) ) {
+                File.Delete( strTmpExcelPath );
+            }
+        }
         public DataTableCollection OpenExcel()
         {
             using ( OpenFileDialog openFileDialog = new OpenFileDialog() ) {
@@ -33,6 +40,7 @@ namespace MergeExcel {
                 if ( openFileDialog.ShowDialog() == DialogResult.OK ) {
                     filePath = openFileDialog.FileName;
                     filePath += ".copy.xlsx";
+                    strTmpExcelPath = filePath;
                     if ( File.Exists( filePath ) ) {
                         File.Delete( filePath );
                     }
@@ -58,7 +66,7 @@ namespace MergeExcel {
         {
             xlApp = new Microsoft.Office.Interop.Excel.Application();
         }
-        public Microsoft.Office.Interop.Excel.Workbook CreateNewWorkBook()
+        public Microsoft.Office.Interop.Excel.Workbook CreateNewWorkbook()
         {
             return xlApp.Workbooks.Add();
         }
