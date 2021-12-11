@@ -91,6 +91,7 @@ namespace MergeExcel {
             this.checkedListBox2.Name = "checkedListBox2";
             this.checkedListBox2.Size = new System.Drawing.Size(318, 224);
             this.checkedListBox2.TabIndex = 5;
+            this.checkedListBox2.SelectedIndexChanged += new System.EventHandler(this.checkedListBox2_SelectedIndexChanged);
             // 
             // label1
             // 
@@ -119,7 +120,7 @@ namespace MergeExcel {
             this.label3.TabIndex = 9;
             this.label3.Text = "当无法调用系统excel时，输出的合并表格将会出现在这里";
             // 
-            // Form1
+            // Form_MergeExcel
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -134,7 +135,7 @@ namespace MergeExcel {
             this.Controls.Add(this.button1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             this.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
-            this.Name = "Form1";
+            this.Name = "Form_MergeExcel";
             this.Text = "Form1";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
             this.Load += new System.EventHandler(this.Form1_Load);

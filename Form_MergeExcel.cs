@@ -388,5 +388,10 @@ namespace MergeExcel {
         {
 
         }
+
+        private void checkedListBox2_SelectedIndexChanged( Object sender, EventArgs e )
+        {
+
+        }
     }
 }

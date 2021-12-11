@@ -24,12 +24,18 @@ namespace MergeExcel {
             }
             return null;
         }
+        public DataTable GetTableByIndex( int i )
+        {
+            return Tables[i];
+        }
         public void ClearTempExcelFile()
         {
             if ( File.Exists( strTmpExcelPath ) ) {
                 File.Delete( strTmpExcelPath );
             }
         }
+        public Microsoft.Office.Interop.Excel.Workbooks wkbks = null;
+        public Microsoft.Office.Interop.Excel.Workbook wkbk = null;
         public DataTableCollection OpenExcel()
         {
             using ( OpenFileDialog openFileDialog = new OpenFileDialog() ) {
@@ -39,12 +45,16 @@ namespace MergeExcel {
 
                 if ( openFileDialog.ShowDialog() == DialogResult.OK ) {
                     filePath = openFileDialog.FileName;
+                    var newFilePath = openFileDialog.FileName;
                     filePath += ".copy.xlsx";
                     strTmpExcelPath = filePath;
                     if ( File.Exists( filePath ) ) {
                         File.Delete( filePath );
                     }
                     File.Copy( openFileDialog.FileName, filePath );
+                    wkbks = xlApp.Workbooks;
+                    wkbk = wkbks.Open( newFilePath );
+
                     try {
                         stream = File.Open( filePath, FileMode.Open, FileAccess.Read );
                     } catch ( Exception ex ) {
@@ -59,6 +69,30 @@ namespace MergeExcel {
                     Tables = result.Tables;
                 }
             }
+            return Tables;
+        }
+        public DataTableCollection OpenExcelByPath( string path )
+        {
+
+            var filePath = path;
+            filePath += ".copy.xlsx";
+            strTmpExcelPath = filePath;
+            if ( File.Exists( filePath ) ) {
+                File.Delete( filePath );
+            }
+            File.Copy( path, filePath );
+            try {
+                stream = File.Open( filePath, FileMode.Open, FileAccess.Read );
+            } catch ( Exception ex ) {
+                MessageBox.Show( $"{ex.Message}\n请检查excel表格是否在打开状态，或excel表格文件是否正确再重试" );
+                return null;
+            }
+            // Auto-detect format, supports:
+            //  - Binary Excel files (2.0-2003 format; *.xls)
+            //  - OpenXml Excel files (2007 format; *.xlsx, *.xlsb)
+            ExcelDataReader = ExcelReaderFactory.CreateReader( stream );
+            var result = ExcelDataReader.AsDataSet();
+            Tables = result.Tables;
             return Tables;
         }
         Microsoft.Office.Interop.Excel.Application xlApp;
