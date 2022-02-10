@@ -1,5 +1,9 @@
 ﻿using ExcelDataReader;
 
+using NPOI.HSSF.UserModel;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
+
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -10,6 +14,84 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace MergeExcel {
+    public class NPOIUtil {
+        string strTmpExcelPath = string.Empty;
+        public IWorkbook WB { get; set; } = null;
+
+        public ISheet GetSheet( string name )
+        {
+            return WB.GetSheet( name );
+        }
+        public ISheet GetSheetAt( int i )
+        {
+            return WB.GetSheetAt( i );
+        }
+
+        public void OpenFileDialog()
+        {
+            using ( OpenFileDialog openFileDialog = new OpenFileDialog() ) {
+                openFileDialog.InitialDirectory = "c:\\";
+                openFileDialog.RestoreDirectory = true;
+                string filePath = string.Empty;
+
+                if ( openFileDialog.ShowDialog() == DialogResult.OK ) {
+                    filePath = openFileDialog.FileName;
+                    var newFilePath = openFileDialog.FileName;
+                    filePath += ".npio.copy.xlsx";
+                    strTmpExcelPath = filePath;
+                    if ( File.Exists( filePath ) ) {
+                        File.Delete( filePath );
+                    }
+                    File.Copy( openFileDialog.FileName, filePath );
+
+                    try {
+                        var stream = File.Open( filePath, FileMode.Open, FileAccess.Read );
+                        WB = new XSSFWorkbook( stream );
+                        stream.Close();
+                    } catch ( Exception ex ) {
+                        MessageBox.Show( $"{ex.Message}\n请检查excel表格是否在打开状态，或excel表格文件是否正确再重试" );
+                    }
+                }
+            }
+        }
+        public void OpenFile( string path )
+        {
+            var filePath = string.Empty;
+            var newFilePath = path;
+            filePath += ".copy.xlsx";
+            strTmpExcelPath = filePath;
+            if ( File.Exists( filePath ) ) {
+                File.Delete( filePath );
+            }
+            File.Copy( path, filePath );
+
+            try {
+                var stream = File.Open( filePath, FileMode.Open, FileAccess.Read );
+                WB = new XSSFWorkbook( stream );
+                stream.Close();
+            } catch ( Exception ex ) {
+                MessageBox.Show( $"{ex.Message}\n请检查excel表格是否在打开状态，或excel表格文件是否正确再重试" );
+                return;
+            }
+        }
+        static void InsertRows( ref HSSFSheet s1, int fromRowIndex, int rowCount )
+        {
+            s1.ShiftRows( fromRowIndex, s1.LastRowNum, rowCount, true, false, true );
+
+            for ( int rowIndex = fromRowIndex; rowIndex < fromRowIndex + rowCount; rowIndex++ ) {
+                HSSFRow rowSource = s1.GetRow( rowIndex + rowCount ) as HSSFRow;
+                HSSFRow rowInsert = s1.CreateRow( rowIndex ) as HSSFRow;
+                rowInsert.Height = rowSource.Height;
+                for ( int colIndex = 0; colIndex < rowSource.LastCellNum; colIndex++ ) {
+                    HSSFCell cellSource = rowSource.GetCell( colIndex ) as HSSFCell;
+                    HSSFCell cellInsert = rowInsert.CreateCell( colIndex ) as HSSFCell;
+                    if ( cellSource != null ) {
+                        cellInsert.CellStyle = cellSource.CellStyle;
+                    }
+                }
+            }
+        }
+    }
     public class EUtil {
         FileStream stream = null;
         string strTmpExcelPath = string.Empty;

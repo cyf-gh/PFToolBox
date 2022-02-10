@@ -58,12 +58,13 @@ namespace MergeExcel {
         {
             return Convert.ToInt32( str.Substring( 0, 5 ) );
         }
-        EUtil eu_daily = new EUtil();
-        EUtil eu = new EUtil();
+        NPOIUtil nu_daily = new NPOIUtil();
+        NPOIUtil nu = new NPOIUtil();
+
         private void Form_Test_Load( Object sender, EventArgs e )
         {
 
- 
+
         }
         List<DailySheetModel> ds;
         int Month;
@@ -71,22 +72,25 @@ namespace MergeExcel {
         int MonthDay;
         private void button1_Click( Object sender, EventArgs e )
         {
-            var a = eu_daily.OpenExcel();
+            // var a = eu_daily.OpenExcel();
+            nu_daily.OpenFileDialog();
             // ==================== 打开每天下发的代发金额表 ====================
             // eu_daily.OpenExcelByPath( @"C:\Users\cyf-m\Documents\1.xlsx" );
-            var t = eu_daily.GetTableByIndex( 0 );
+            // var t = eu_daily.GetTableByIndex( 0 );
+
+            var t = nu_daily.GetSheetAt( 0 );
             ds = new List<DailySheetModel>();
+
             // 应当保证
             // 统计日期           A
             // 代发单位编号       D
             // 当月累计代发金额   L
-            for ( int i = 1; i < t.Rows.Count; i++ ) {
-                var d = t.Rows[i];
-                var r = d.ItemArray;
+            for ( int i = 1; i < t.LastRowNum; i++ ) {
+                var r = t.GetRow( i );
                 ds.Add( new DailySheetModel() {
-                    Date = r[ColI( 'A' )].ToString(),
-                    ComCodeComp = r[ColI( 'D' )].ToString(),
-                    MonthlyTotal = Convert.ToDouble( r[ColI( 'L' )].ToString() )
+                    Date = r.GetCell( ColI( 'A' ) ).ToString(),
+                    ComCodeComp = r.GetCell( ColI( 'D' ) ).ToString(),
+                    MonthlyTotal = Convert.ToDouble( r.GetCell( ColI( 'L' ) ).ToString() )
                 } );
             }
             foreach ( var d in ds ) {
@@ -104,32 +108,32 @@ namespace MergeExcel {
         private void button2_Click( Object sender, EventArgs e )
         {
             // ==================== 打开含有“代发单位”表的文件 ====================
-            var a = eu.OpenExcel();
-            var tcl = eu.GetTableByName( "代发单位" );
+            nu.OpenFileDialog();
+            var tcl = nu.GetSheet( "代发单位" );
             // 代发编号     B
             // 开拓人       G
             var cms = new List<ComManModel>();
             // 计算历史总和
-            var d0 = tcl.Rows[0];
-            var r0 = d0.ItemArray;
-            var StartMonth = Convert.ToInt32( r0[ColI( 'I' )].ToString().Replace( '月', '\r' ) );
+            var r0 = tcl.GetRow( 0 );
+            var StartMonth = Convert.ToInt32( r0.GetCell( ColI( 'I' ) ).ToString().Replace( '月', '\r' ) );
             var SumColCount = Month - StartMonth;
 
-            for ( int i = 1; i < tcl.Rows.Count; i++ ) {
-                var d = tcl.Rows[i];
-                var r = d.ItemArray;
+            for ( 
+                int i = 1; i < tcl.LastRowNum; i++ ) {
+                var r = tcl.GetRow( i );
                 var cmmm = new ComManModel() {
-                    ComCode = r[ColI( 'B' )].ToString(),
-                    Manager = r[ColI( 'G' )].ToString(),
+                    ComCode = r.GetCell( ColI( 'B' ) ).ToString(),
+                    Manager = r.GetCell( ColI( 'G' ) ).ToString(),
                     MonthlyHistory = 0
                 };
                 // 计算之前总数
                 for ( int j = 0; j < SumColCount; j++ ) {
-                    cmmm.MonthlyHistory += Convert.ToDouble( r[ColI( 'I' ) + j].ToString() );
+                    cmmm.MonthlyHistory += Convert.ToDouble( r.GetCell( ColI( 'I' ) + j ).ToString() );
                 }
                 cms.Add( cmmm );
             }
             // 将代发金额搬至代发单位表
+            
             foreach ( var cm in cms ) {
                 var dd = ds.Find( d => { return d.ComCode == cm.ComCode; } );
                 if ( dd == null ) {
@@ -179,26 +183,26 @@ namespace MergeExcel {
             var dds = new List<DepModel>();
             var ps = new List<PersonModel>();
 
-            var tp = eu.GetTableByName( "到个人" );
+            var tp = nu.GetSheet( "到个人" );
             DepModel ddd = null;
-            for ( int i = 4; i < tp.Rows.Count; i++ ) {
-                var d = tp.Rows[i];
-                var r = d.ItemArray;
+            for ( int i = 4; i < tp.LastRowNum; i++ ) 
+                {
+                var r = tp.GetRow( i );
                 if ( ddd == null ) {
                     ddd = new DepModel() {
-                        Name = r[ColI( 'A' )].ToString()
+                        Name = r.GetCell( ColI( 'A' )).ToString()
                     };
                 }
-                Console.WriteLine( r[ColI( 'A' )].ToString() );
+                Console.WriteLine( r.GetCell( ColI( 'A' ) ).ToString() );
                 var p = new PersonModel() {
-                    Manager = r[ColI( 'B' )].ToString(),
-                    Target = Convert.ToDouble( r[ColI( 'J' )].ToString() ),
+                    Manager = r.GetCell( ColI( 'B' ) ).ToString(),
+                    Target = Convert.ToDouble( r.GetCell( ColI( 'J' ) ).ToString() ),
                 };
                 if ( p.Manager == "小计" ) {
                     var total = new PersonModel() {
                         Manager = "小计",
                         Total = 0,
-                        Target = Convert.ToDouble( r[ColI( 'J' )].ToString() )
+                        Target = Convert.ToDouble( r.GetCell( ColI( 'J' ) ).ToString() )
                     };
                     foreach ( var ppp in ps ) {
                         total.Total += ppp.Total;
@@ -221,17 +225,17 @@ namespace MergeExcel {
                     ps.Add( p );
                 }
             }
-            var team = eu.GetTableByName( "团队" );
-            for ( int i = 0; i < team.Rows.Count; i++ ) {
-                var d = team.Rows[i];
-                var r = d.ItemArray;
-                var teamName = r[ColI( 'A' )].ToString();
+            var team = nu.GetSheet( "团队" );
+            for ( int i = 0; i < team.LastRowNum; i++ ) {
+                var r = team.GetRow(i);
+                var teamName = r.GetCell( ColI( 'A' ) )?.ToString();
                 var dddd = dds.Find( dd => { return dd.Name == teamName; } );
                 if ( dddd != null ) {
-                    dddd.Target = Convert.ToDouble( r[ColI( 'C' )].ToString() );
+                    dddd.Target = Convert.ToDouble( r.GetCell( ColI( 'C' ) ).ToString() );
                     dddd.CalculateRate();
                 }
             }
+            /*
             Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
             var xlWorkBook = xlApp.Workbooks.Add();
             xlWorkBook.Sheets.Add( After: xlWorkBook.Sheets[xlWorkBook.Sheets.Count] );
@@ -287,6 +291,7 @@ namespace MergeExcel {
             var ff = Path.Combine( Environment.CurrentDirectory, $"最终结果{Year}{MonthDay}.xlsx" );
             xlWorkBook.SaveCopyAs( Path.Combine( Environment.CurrentDirectory, $"最终结果{Year}{MonthDay}.xlsx" ) );
             Process.Start( ff );
+            */
         }
     }
 }

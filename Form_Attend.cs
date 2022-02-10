@@ -38,7 +38,7 @@ namespace MergeExcel {
             if ( a == "0" ) {
                 return 0;
             }
-            var p = new Regex( @"(?<h>[\S]+)小时(?<m>[\S])+分钟" );
+            var p = new Regex( @"(?<h>[\S]+)小时(?<m>[\S]+)分钟" );
             Match m = p.Match( a );
             if ( m.Success ) {
                 return Convert.ToInt32( m.Groups["h"].Value ) * 60 + Convert.ToInt32( m.Groups["m"].Value );
@@ -96,6 +96,7 @@ namespace MergeExcel {
 
 
                         var d3 = HHMM2H( r[ColI( 'H' )].ToString() );
+                        Console.WriteLine( $"{r[ColI( 'H' )].ToString()} == {d3}" );
                         dic[key].D[2] += d1 == 0 ? 0 : ( d3 / d1 / 60 ); // 平均值项:工作时长(小时)
                         dic[key].AVG[2] += d3 == 0 ? 0 : 1;
 
