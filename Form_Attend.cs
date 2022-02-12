@@ -1,5 +1,7 @@
 ﻿using ExcelDataReader;
 
+using Newtonsoft.Json;
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -24,6 +26,10 @@ namespace MergeExcel {
         {
             return col - 'A';
         }
+        int ColI2( int col )
+        {
+            return col - 'A';
+        }
         int ToInt( string s )
         {
             int res = 0;
@@ -44,6 +50,10 @@ namespace MergeExcel {
                 return Convert.ToInt32( m.Groups["h"].Value ) * 60 + Convert.ToInt32( m.Groups["m"].Value );
             }
             return 0;
+        }
+        struct OT
+        {
+            public int org, target;
         }
         private void button1_Click( Object sender, EventArgs e )
         {
@@ -80,6 +90,58 @@ namespace MergeExcel {
                     var ts = result.Tables;
 
                     var dic = new Dictionary<string, Row>();
+
+
+                    var r34Dict = new Dictionary<string, int>();
+                    // 读取第一第二行，判断列的正确性并提示用户
+                    var r3 = ts[0].Rows[2].ItemArray;
+                    for ( int iii = 0; iii < r3.Length; iii++)
+                    {
+                        var r = r3[iii];
+                        r34Dict[r.ToString()] = iii + 'A';
+                    }
+                    var r4 = ts[0].Rows[3].ItemArray;
+                    for (int iii = 0; iii < r4.Length; iii++)
+                    {
+                        var r = r4[iii];
+                        r34Dict[r.ToString()] = iii + 'A';
+                    }
+
+                    var diffDict = new Dictionary<string, OT>();
+
+                    foreach (var od in orgDict)
+                    {
+                        foreach (var r34 in r34Dict)
+                        {
+                            if ( r34.Key == od.Key )
+                            {
+                                if ( od.Value != r34.Value )
+                                {
+                                    var ot = new OT() { org = od.Value, target = r34.Value };
+                                    
+                                    diffDict.Add( od.Key, ot );
+                                }
+                            }
+                        }
+                    }
+                    string t = $"发现 {diffDict.Count} 个与默认列号不一致的列\n";
+                    foreach (var dd in diffDict)
+                    {
+                        t += $"{dd.Key} -> 原本是 {(char)dd.Value.org} 但目标 Excel表格 的列可能是 {(char)dd.Value.target}\n";
+
+                    }
+                    t += $"按确定使用检测到的列进行生成，点击取消使用原始列";
+                    if ( DialogResult.OK == MessageBox.Show( t, "请注意", MessageBoxButtons.OKCancel ) )
+                    {
+                        foreach (var dd in diffDict)
+                        {
+                            orgDict[dd.Key] = (char)dd.Value.target;
+                        }
+                    } else
+                    {
+                        return;
+                    }
+
                     for ( int ii = 0; ii < ts[0].Rows.Count; ii++ ) {
                         var d = ts[0].Rows[ii];
                         var r = d.ItemArray;
@@ -100,12 +162,12 @@ namespace MergeExcel {
                         dic[key].D[2] += d1 == 0 ? 0 : ( d3 / d1 / 60 ); // 平均值项:工作时长(小时)
                         dic[key].AVG[2] += d3 == 0 ? 0 : 1;
 
-                        dic[key].D[3] += ToInt( r[ColI( 'T' )].ToString() ); // 求和项:外出时长
-                        dic[key].D[4] += ToInt( r[ColI( 'I' )].ToString() ); // 求和项:迟到次数
-                        dic[key].D[5] += ToInt( r[ColI( 'N' )].ToString() ); // 求和项:早退次数
-                        dic[key].D[6] += ToInt( r[ColI( 'P' )].ToString() ); // 求和项:上班缺卡次数
-                        dic[key].D[7] += ToInt( r[ColI( 'Q' )].ToString() ); // 求和项:下班缺卡次数
-                        dic[key].D[8] += ToInt( r[ColI( 'R' )].ToString() ); // 求和项: 旷工天数
+                        dic[key].D[3] += ToInt( r[ColI2( orgDict["外出"] )].ToString() ); // 求和项:外出时长
+                        dic[key].D[4] += ToInt( r[ColI2( orgDict["迟到次数"] )].ToString() ); // 求和项:迟到次数
+                        dic[key].D[5] += ToInt( r[ColI2( orgDict["早退次数"] )].ToString() ); // 求和项:早退次数
+                        dic[key].D[6] += ToInt( r[ColI2( orgDict["上班缺卡次数"] )].ToString() ); // 求和项:上班缺卡次数
+                        dic[key].D[7] += ToInt( r[ColI2( orgDict["下班缺卡次数"] )].ToString() ); // 求和项:下班缺卡次数
+                        dic[key].D[8] += ToInt( r[ColI2( orgDict["旷工天数"] )].ToString() ); // 求和项: 旷工天数
                     }
                     dic.Remove( "" );
                     dic.Remove( "考勤组" );
@@ -178,22 +240,26 @@ namespace MergeExcel {
                 }
             }
         }
-
+        Dictionary<string, char> orgDict = new Dictionary<string, char>();
         private void FormAttend_Load( Object sender, EventArgs e )
         {
+            orgDict = JsonConvert.DeserializeObject<Dictionary<string, char>>(File.ReadAllText("./c.json"));
+
             label1.Text = @"
-                    为保证最终数据的正确，请保证列与列数据的正确性
+        为保证最终数据的正确，请保证列与列数据的正确性
 
-                     列      列数据
+        列      列数据
 
-                     F      出勤天数
-                     T      外出时长
-                     H      工作时长(小时)
-                     I      迟到次数
-                     N      早退次数
-                     P      上班缺卡次数
-                     Q      下班缺卡次数
-                     R      旷工天数";
+        " + Environment.NewLine;
+            foreach (var or in orgDict)
+            {
+                label1.Text += $"        {or.Value}        {or.Key}{Environment.NewLine}";
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            Process.Start( Path.Combine( Application.StartupPath, "c.json" ) );
         }
     }
 }
