@@ -11,8 +11,7 @@ using System.Windows.Forms;
 
 namespace MergeExcel {
     public partial class Form_Attend : Form {
-        public Form_Attend()
-        {
+        public Form_Attend() {
             InitializeComponent();
         }
         IExcelDataReader excelDataReader = null;
@@ -22,25 +21,24 @@ namespace MergeExcel {
             public double[] D { get; set; } = new double[9];
             public double[] AVG { get; set; } = new double[4];
         }
-        int ColI( char col )
-        {
+        int ColI( char col ) {
             return col - 'A';
         }
-        int ColI2( int col )
-        {
+        int ColI2( int col ) {
             return col - 'A';
         }
-        int ToInt( string s )
-        {
+        int ToInt( string s ) {
             int res = 0;
             int.TryParse( s, out res );
             return res;
         }
-        double min( double a )
-        {
+        double min( double a ) {
             return a == 0 ? 1 : a;
-        } 
+        }
         int HHMM2H( string a ) {
+            if ( string.IsNullOrEmpty( a ) ) {
+                return 0;
+            }
             if ( a == "0" ) {
                 return 0;
             }
@@ -48,15 +46,19 @@ namespace MergeExcel {
             Match m = p.Match( a );
             if ( m.Success ) {
                 return Convert.ToInt32( m.Groups["h"].Value ) * 60 + Convert.ToInt32( m.Groups["m"].Value );
+            } else {
+                try {
+                    return Convert.ToInt32( a );
+                } catch ( Exception ) {
+                    return 0;
+                }
             }
             return 0;
         }
-        struct OT
-        {
+        struct OT {
             public int org, target;
         }
-        private void button1_Click( Object sender, EventArgs e )
-        {
+        private void button1_Click( Object sender, EventArgs e ) {
             var fileContent = string.Empty;
             var filePath = string.Empty;
 
@@ -95,50 +97,40 @@ namespace MergeExcel {
                     var r34Dict = new Dictionary<string, int>();
                     // 读取第一第二行，判断列的正确性并提示用户
                     var r3 = ts[0].Rows[2].ItemArray;
-                    for ( int iii = 0; iii < r3.Length; iii++)
-                    {
+                    for ( int iii = 0; iii < r3.Length; iii++ ) {
                         var r = r3[iii];
                         r34Dict[r.ToString()] = iii + 'A';
                     }
                     var r4 = ts[0].Rows[3].ItemArray;
-                    for (int iii = 0; iii < r4.Length; iii++)
-                    {
+                    for ( int iii = 0; iii < r4.Length; iii++ ) {
                         var r = r4[iii];
                         r34Dict[r.ToString()] = iii + 'A';
                     }
 
                     var diffDict = new Dictionary<string, OT>();
 
-                    foreach (var od in orgDict)
-                    {
-                        foreach (var r34 in r34Dict)
-                        {
-                            if ( r34.Key == od.Key )
-                            {
-                                if ( od.Value != r34.Value )
-                                {
+                    foreach ( var od in orgDict ) {
+                        foreach ( var r34 in r34Dict ) {
+                            if ( r34.Key == od.Key ) {
+                                if ( od.Value != r34.Value ) {
                                     var ot = new OT() { org = od.Value, target = r34.Value };
-                                    
+
                                     diffDict.Add( od.Key, ot );
                                 }
                             }
                         }
                     }
                     string t = $"发现 {diffDict.Count} 个与默认列号不一致的列\n";
-                    foreach (var dd in diffDict)
-                    {
+                    foreach ( var dd in diffDict ) {
                         t += $"{dd.Key} -> 原本是 {(char)dd.Value.org} 但目标 Excel表格 的列可能是 {(char)dd.Value.target}\n";
 
                     }
                     t += $"按确定使用检测到的列进行生成，点击取消使用原始列";
-                    if ( DialogResult.OK == MessageBox.Show( t, "请注意", MessageBoxButtons.OKCancel ) )
-                    {
-                        foreach (var dd in diffDict)
-                        {
+                    if ( DialogResult.OK == MessageBox.Show( t, "请注意", MessageBoxButtons.OKCancel ) ) {
+                        foreach ( var dd in diffDict ) {
                             orgDict[dd.Key] = (char)dd.Value.target;
                         }
-                    } else
-                    {
+                    } else {
                         return;
                     }
 
@@ -152,17 +144,21 @@ namespace MergeExcel {
                         }
                         dic[key].D[0]++; // 人数
 
-                        var d1 = ToInt( r[ColI( 'F' )].ToString() );
-                        dic[key].D[1] += d1; // 平均值项:出勤天数
-                        dic[key].AVG[1] += d1 == 0 ? 0 : 1;
+                        var attendDay = ToInt( r[ColI2( orgDict["出勤天数"] )].ToString() );
+                        dic[key].D[1] += attendDay; // 平均值项:出勤天数
+                        dic[key].AVG[1] += attendDay == 0 ? 0 : 1;
+
+                        var outT = ToInt( r[ColI2( orgDict["外出"] )].ToString() ); // 求和项:外出时长
+                        // var outDay = outT / 8; // 外出固定为8小时
+
+                        var workD = HHMM2H( r[ColI2( orgDict["工作时长"] )].ToString() );
+                        Console.WriteLine( $"{r[ColI2( orgDict["工作时长"] )]} == {workD}" );
+                        var workDay = attendDay;
+                        dic[key].D[2] += workDay == 0 ? 0 : ( workD / workDay / 60 ); // 平均值项:工作时长(小时) 工作时长包括出勤时长
+                        dic[key].AVG[2] += workD == 0 ? 0 : 1;
 
 
-                        var d3 = HHMM2H( r[ColI( 'H' )].ToString() );
-                        Console.WriteLine( $"{r[ColI( 'H' )].ToString()} == {d3}" );
-                        dic[key].D[2] += d1 == 0 ? 0 : ( d3 / d1 / 60 ); // 平均值项:工作时长(小时)
-                        dic[key].AVG[2] += d3 == 0 ? 0 : 1;
-
-                        dic[key].D[3] += ToInt( r[ColI2( orgDict["外出"] )].ToString() ); // 求和项:外出时长
+                        dic[key].D[3] += outT;
                         dic[key].D[4] += ToInt( r[ColI2( orgDict["迟到次数"] )].ToString() ); // 求和项:迟到次数
                         dic[key].D[5] += ToInt( r[ColI2( orgDict["早退次数"] )].ToString() ); // 求和项:早退次数
                         dic[key].D[6] += ToInt( r[ColI2( orgDict["上班缺卡次数"] )].ToString() ); // 求和项:上班缺卡次数
@@ -204,7 +200,7 @@ namespace MergeExcel {
                     xlWorkSheet.Cells[1, 9] = "求和项:下班缺卡次数";
                     xlWorkSheet.Cells[1, 10] = "求和项:旷工天数";
 
-                    
+
                     var sums = new double[11];
 
                     int i = 2;
@@ -228,11 +224,11 @@ namespace MergeExcel {
                     }
                     var now = DateTime.Now.ToString( "MM-dd-yyyy-HH-mm-ss" );
                     var ff = Path.Combine( Environment.CurrentDirectory, $"最终结果{now}.xlsx" );
-                    SAVE:
+                SAVE:
                     try {
                         xlWorkBook.SaveCopyAs( ff );
                     } catch ( Exception ex ) {
-                        MessageBox.Show($"{ex.Message}\n please retry");
+                        MessageBox.Show( $"{ex.Message}\n please retry" );
                         goto SAVE;
                         throw;
                     }
@@ -241,9 +237,8 @@ namespace MergeExcel {
             }
         }
         Dictionary<string, char> orgDict = new Dictionary<string, char>();
-        private void FormAttend_Load( Object sender, EventArgs e )
-        {
-            orgDict = JsonConvert.DeserializeObject<Dictionary<string, char>>(File.ReadAllText("./c.json"));
+        private void FormAttend_Load( Object sender, EventArgs e ) {
+            orgDict = JsonConvert.DeserializeObject<Dictionary<string, char>>( File.ReadAllText( "./c.json" ) );
 
             label1.Text = @"
         为保证最终数据的正确，请保证列与列数据的正确性
@@ -251,14 +246,12 @@ namespace MergeExcel {
         列      列数据
 
         " + Environment.NewLine;
-            foreach (var or in orgDict)
-            {
+            foreach ( var or in orgDict ) {
                 label1.Text += $"        {or.Value}        {or.Key}{Environment.NewLine}";
             }
         }
 
-        private void button2_Click(object sender, EventArgs e)
-        {
+        private void button2_Click( object sender, EventArgs e ) {
             Process.Start( Path.Combine( Application.StartupPath, "c.json" ) );
         }
     }
