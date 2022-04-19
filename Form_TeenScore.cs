@@ -22,11 +22,17 @@ namespace MergeExcel {
         }
 
         class Worker {
+            public string name;
             public string g; // 条线
-            public List<string> Bs = new List<string>(); // 
+            public string Content;
+            public string ZPScore;
+            public string ZPContent;
+            public string EMContent;
         }
 
         class Recommend {
+            public string RName;
+            public string g;
             public string BeRWorkerName;
             public string Description;
         }
@@ -73,18 +79,15 @@ namespace MergeExcel {
                     }
                 }
 
-                var rec = new Dictionary<string, List<Recommend>>();
-                var dic = new Dictionary<string, Worker>();
+                var rec = new List<Recommend>();
+                var dic = new List<Worker>();
                 for ( int j = 1; j < defaultT.Rows.Count; j++ ) {
                     var d = defaultT.Rows[j];
                     var r = d.ItemArray;
                     var name = ( r[ColI( 'G' )].ToString() ); // 姓名
-                    var w = dic.ContainsKey( name ) ? dic[name] : new Worker();
-                    if ( !dic.ContainsKey( name ) ) {
-                        dic[name] = w;
-                    }
-                    w.g = r[ColI( 'H' )].ToString(); // 条线
-                                                     // 自我打分
+                    var w = new Worker();
+                    string g = r[ColI( 'H' )].ToString(); // 条线
+                                                          // 自我打分
                     for ( int i = ColI( 'I' ), ii = 0; i < ColI( 'Y' ); i++ ) {
                         var content = r[i].ToString();
                         var contentHead = Heads[i - ColI( 'I' )].ToString();
@@ -93,7 +96,12 @@ namespace MergeExcel {
                                 ++i;
                                 continue;
                             } else {
-                                w.Bs.Add( $"{contentHead.Replace( "___", $"[{content}]\t" ).Replace( "\n", "" )}" );
+                                w = new Worker();
+                                w.g = g;
+                                w.name = name;
+                                w.ZPScore = content;
+                                w.Content = contentHead.Replace( "分值填写：___", "" ).Replace( "(1)", "" );
+                                // w.Bs.Add( $"{contentHead.Replace( "___", $"[{content}]\t" ).Replace( "\n", "" )}" );
                                 ++ii;
                             }
                         } else if ( contentHead.Contains( "(2)" ) ) {
@@ -104,23 +112,24 @@ namespace MergeExcel {
                                 min = m.Groups["min"].Value;
                                 max = m.Groups["max"].Value;
                             }
-                            w.Bs[w.Bs.Count - 1] += $"自评描述：[{content.Replace( "\n", "" )}] ~{name}~";
-                            w.Bs[w.Bs.Count - 1] = w.Bs[w.Bs.Count - 1].Replace( "分值填写：", "\t自评分：" );
-                            w.Bs[w.Bs.Count - 1] = w.Bs[w.Bs.Count - 1].Replace( "(1)", "" );
-                            w.Bs[w.Bs.Count - 1] += $"[单行文本题](分值范围：{min}~{max})\n\n";
+                            w.ZPContent = content;
+                            w.Content += $"({min}~{max})";
+                            dic.Add( new Worker {
+                                name = w.name,
+                                Content = w.Content,
+                                g = g,
+                                ZPScore = w.ZPScore,
+                                ZPContent = w.ZPContent,
+                                EMContent = w.EMContent
+                            } );
                         }
-                    }
-                    var recrr = rec.ContainsKey( name ) ? rec[name] : new List<Recommend>();
-                    if ( !rec.ContainsKey( name ) ) {
-                        rec[name] = recrr;
                     }
                     var recName = r[ColI( 'Y' )].ToString();
                     var recDesc = r[ColI( 'Z' )].ToString();
                     if ( recName == "(空)" ) {
                         continue;
-                    } else {
-                        recrr.Add( new Recommend { BeRWorkerName = recName, Description = recDesc } );
                     }
+                    rec.Add( new Recommend { BeRWorkerName = recName, Description = recDesc, RName = name, g=g } );
                 }
 
                 var ggg = new Dictionary<string, string>();
@@ -130,34 +139,52 @@ namespace MergeExcel {
                 ggg.Add( "4", "风险条线条线负责人打分统计" + co );
                 ggg.Add( "5", "办公室条线负责人打分统计" + co );
 
-                var gggstr = new Dictionary<string, string>();
-                foreach ( var d in dic ) {
+                foreach ( var gg in ggg ) {
+                    var allw = dic.FindAll( a => { return a.g == gg.Key; } );
+                    if ( allw.Count == 0 ) {
+                        continue;
+                    }
+                    SaveFuck( ggg[allw[0].g], allw, rec.FindAll( a => { return a.g == gg.Key; } ) );
+                }
 
-                    string str = "";
-                    if ( gggstr.ContainsKey( ggg[d.Value.g] ) ) {
-                        str = gggstr[ggg[d.Value.g]];
-                    } else {
-                        gggstr[ggg[d.Value.g]] = str;
-                    }
-                    str += $"\n\n{d.Key}[段落说明]\n";
-                    foreach ( var des in d.Value.Bs ) {
-                        str += $"{des}";
-                    }
-                    var rrr = rec[d.Key];
-                    string fuckrrr = "";
-                    foreach ( var r in rrr ) {
-                        fuckrrr += $"{r.Description}[单行文本题]({r.BeRWorkerName})\n";
-                    }
-                    str += $"条线打分理由:[多行文本题]\n推荐人打分[段落说明]\n如有多位员工姓名，则每个人都会获得相同的打分值[段落说明]\n{fuckrrr}\n===分页===";
-                    gggstr[ggg[d.Value.g]] = str;
-                }
-                foreach ( var ggggggg in gggstr ) {
-                    string sum = "";
-                    sum += $"{ggggggg.Key} \n\n{ggggggg.Value}";
-                    File.WriteAllText( $"./{ggggggg.Key}.txt", sum );
-                }
-                Console.WriteLine( dic );
+
                 Application.Exit();
+            }
+
+            void SaveFuck( string name, List<Worker> fff, List<Recommend> rrs ) {
+                Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
+                var xlWorkBook = xlApp.Workbooks.Add();
+                xlWorkBook.Sheets.Add( After: xlWorkBook.Sheets[xlWorkBook.Sheets.Count] );
+                var xlWorkSheet = (Microsoft.Office.Interop.Excel.Worksheet)xlWorkBook.Worksheets.get_Item( 1 );
+                var xlWorkSheetReco = (Microsoft.Office.Interop.Excel.Worksheet)xlWorkBook.Worksheets.get_Item( 2 );
+
+                xlWorkSheet.Cells[1, 1] = "姓名";
+                xlWorkSheet.Cells[1, 2] = "项目";
+                xlWorkSheet.Cells[1, 3] = "自评分";
+                xlWorkSheet.Cells[1, 4] = "项目内容";
+                xlWorkSheet.Cells[1, 5] = "条线打分";
+                xlWorkSheet.Cells[1, 6] = "打分理由";
+                xlWorkSheetReco.Cells[1, 1] = "推荐人";
+                xlWorkSheetReco.Cells[1, 2] = "被推荐人";
+                xlWorkSheetReco.Cells[1, 3] = "推荐理由";
+                xlWorkSheetReco.Cells[1, 4] = "条线打分";
+                xlWorkSheetReco.Cells[1, 5] = "打分理由";
+
+                for ( int i = 0; i < fff.Count; i++ ) {
+                    var f = fff[i];
+                    xlWorkSheet.Cells[i + 2, 1] = f.name;
+                    xlWorkSheet.Cells[i + 2, 2] = f.Content;
+                    xlWorkSheet.Cells[i + 2, 3] = f.ZPScore;
+                    xlWorkSheet.Cells[i + 2, 4] = f.ZPContent;
+                }
+                for ( int i = 0; i < rrs.Count; i++ ) {
+                    var r = rrs[i];
+                    xlWorkSheetReco.Cells[i + 2, 1] = r.RName;
+                    xlWorkSheetReco.Cells[i + 2, 2] = r.BeRWorkerName;
+                    xlWorkSheetReco.Cells[i + 2, 3] = r.Description;
+                }
+                File.Delete( "./{name}.xlsx" );
+                xlWorkBook.SaveCopyAs( $"./{name}.xlsx" );
             }
         }
     }
