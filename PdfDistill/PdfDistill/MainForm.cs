@@ -12,36 +12,37 @@ using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace PdfDistill {
-    public partial class Form1 : Form {
+    public partial class MainForm : Form {
         List<Dictionary<string, string>> pages = new List<Dictionary<string, string>>();
+        List<Dictionary<string, string>> Res { get; set; } = new List<Dictionary<string, string>>();
         string Log = string.Empty;
-        List<Dictionary<string, string>> Res = new List<Dictionary<string, string>>();
-        List<string> UnsolvedPdfs = new List<string>();
+        List<string> UnsolvedPdfs { get; set; } = new List<string>();
         List<int> UnsolvedNumber = new List<int>();
         public void RefreshStatus() {
-            lb_Status.Text = $"已汇总数据笔数：{Res.Count}      未处理文件个数：{UnsolvedPdfs.Count}";
+            lb_Status.Text = $"已汇总数据笔数：{pages.Count}      未处理文件个数：{UnsolvedPdfs.Count}";
         }
         public void GenerateExcel() {
             var xlApp = new Microsoft.Office.Interop.Excel.Application();
             var xlwb = xlApp.Workbooks.Add();
             var xlws = xlwb.Worksheets.get_Item( 1 ) as Microsoft.Office.Interop.Excel.Worksheet;
-
-            //var hs = File.ReadAllText( "./tableHeads.txt" );
+            bgw_ExcelGenerate.WorkerReportsProgress = true;
             int j = 1;
-            //var hss = hs.Split( ',' );
             // 创建表头
             var hs = new List<string>();
+            // 表头根据pages第一比数据的keys进行创建，因此一定要保证pages[0]的keys数据正确性
             foreach ( var h in pages[0] ) {
-                hs.Add(h.Key);
+                hs.Add( h.Key );
                 xlws.Cells[1, j] = h.Key;
                 ++j;
             }
-
+            int t = pages.Count * hs.Count;
+            int p = 0;
             for ( int i = 0; i < pages.Count; i++ ) {
                 for ( int ii = 0; ii < pages[i].Count; ii++ ) {
-                    xlws.Cells[ i+2, ii +1 ] = '\t'+pages[i][hs[ii]];
+                    xlws.Cells[i + 2, ii + 1] = '\t' + pages[i][hs[ii]];
+                    bgw_ExcelGenerate.ReportProgress( 100 * p / t );
+                    p++;
                 }
-                //xlws.Cells[i + 2, ii + 1] = Res[i][hss[ii]];
             }
             var fileFullPath = System.IO.Path.Combine( Environment.CurrentDirectory, $"结果-{DateTime.Now.ToString( "MM-dd-yyyy-HH-mm-ss" )}.xlsx" );
         SAVE:
@@ -55,7 +56,7 @@ namespace PdfDistill {
             }
             Process.Start( fileFullPath );
         }
-        public Form1() {
+        public MainForm() {
             InitializeComponent();
         }
         public void WriteLog( string log ) {
@@ -97,8 +98,18 @@ namespace PdfDistill {
         void RefreshPswd() {
             lb_pswd.Text = File.ReadAllText( "./pswd.txt" );
         }
+        public List<FileInfo> fs { get; set; } = new List<FileInfo>();
         void RefreshTicktsFolderPath() {
             lb_ticketsPath.Text = File.ReadAllText( "./ticketsFolderPath.txt" );
+            var ticketsDI = new DirectoryInfo( lb_ticketsPath.Text );
+            if ( !ticketsDI.Exists ) {
+                MessageBox.Show( "设置的票据文件夹不存在，请重新设置" );
+                return;
+            }
+            var ts = ticketsDI.GetFiles( "*.pdf" );
+            fs = ts.ToList();
+            lbox_Files.DataSource = fs;
+            lbox_Files.DisplayMember = "Name";
         }
         private void btn_newPswd_Click( object sender, EventArgs e ) {
             var newPswd = Interaction.InputBox( "输入密码", $"请输入新的pdf密码" );
@@ -116,26 +127,26 @@ namespace PdfDistill {
                 File.WriteAllText( "./ticketsFolderPath.txt", lb_ticketsPath.Text );
                 MessageBox.Show( $"已更新票据文件夹路径为\n{fbd.SelectedPath}" );
             }
+            RefreshTicktsFolderPath();
         }
         #endregion
         private void btn_Start_Click( object sender, EventArgs e ) {
-            UnsolvedPdfs.Clear();
-            var ticketsDI = new DirectoryInfo( lb_ticketsPath.Text );
-            if ( !ticketsDI.Exists ) {
-                MessageBox.Show( "设置的票据文件夹不存在，请重新设置" );
+            if ( fs.Count == 0 ) {
+                MessageBox.Show( "列表中无文件，请将文件拖拽至窗口中或设置文件所在的文件夹" );
                 return;
             }
-            var ts = ticketsDI.GetFiles( "*.pdf" );
-            if ( MessageBox.Show( $"目录下有 {ts.Length} 个PDF文件，是否继续？" ) != DialogResult.OK ) {
+            UnsolvedPdfs.Clear();
+            if ( !( MessageBox.Show( $"即将处理 {lbox_Files.Items.Count} 个PDF文件，是否继续？" ) == DialogResult.OK ) ) {
                 MessageBox.Show( "操作终止" );
                 return;
             }
-            foreach ( var f in ts ) {
+            foreach ( var f in fs ) {
                 string filePath = f.FullName;
                 string a = string.Empty;
                 int tryCount = 0;
                 const int PswdCorrect = -1;
                 WriteLog( "开始转化！" );
+                #region PSWD
                 while ( tryCount != PswdCorrect ) {
                     try {
                         WriteLog( $"正在处理文件：{f.FullName}" );
@@ -158,6 +169,7 @@ namespace PdfDistill {
                         }
                     }
                 }
+                #endregion
                 if ( a == String.Empty ) {
                     UnsolvedPdfs.Add( f.FullName );
                     continue;
@@ -205,7 +217,7 @@ namespace PdfDistill {
                 //        }
                 //    }
                 //}
-                WriteLog($"数据处理完毕，实际数据笔数：{pages.Count}");
+                WriteLog( $"数据处理完毕，实际数据笔数：{pages.Count}" );
                 // Res.Add( r );
                 // WriteLog( $"当前文件处理完毕，总数据笔数{Res.Count}，未处理笔数{UnsolvedPdfs.Count}，未匹配笔数：{UnsolvedNumber.Count}" );
                 WriteLog( $"" );
@@ -221,7 +233,7 @@ namespace PdfDistill {
                 Process.Start( System.IO.Path.Combine( Environment.CurrentDirectory, "unsolvedPdfs.txt" ) );
             }
             if ( DialogResult.OK == MessageBox.Show( "数据已装载，是否立即生成Excel表格？", "提示", MessageBoxButtons.OKCancel ) ) {
-                GenerateExcel();
+                bgw_ExcelGenerate.RunWorkerAsync();
             }
         }
 
@@ -231,6 +243,76 @@ namespace PdfDistill {
             } else {
                 MessageBox.Show( "数据暂时为空，请先点击开始转化生成数据", Text );
             }
+        }
+
+        private void btn_manual_Click( object sender, EventArgs e ) {
+            Process.Start( System.IO.Path.Combine( Environment.CurrentDirectory, "readme.txt" ) );
+        }
+
+        private void bgw_ExcelGenerate_DoWork( object sender, System.ComponentModel.DoWorkEventArgs e ) {
+            GenerateExcel();
+        }
+
+        private void bgw_ExcelGenerate_ProgressChanged( object sender, System.ComponentModel.ProgressChangedEventArgs e ) {
+            progressBar_Worker.Value = e.ProgressPercentage;
+            lb_Status.Text = $"处理百分比：{e.ProgressPercentage}%";
+        }
+
+        private void lbox_Files_DragDrop( object sender, DragEventArgs e ) {
+            DragDropFile( e );
+        }
+
+        private void btn_DeleteItem_Click( object sender, EventArgs e ) {
+            fs.Remove( lbox_Files.SelectedItem as FileInfo );
+            RefreshListbox();
+        }
+
+        void RefreshListbox() {
+            lbox_Files.DataSource = null;
+            lbox_Files.DataSource = fs;
+            lbox_Files.DisplayMember = "Name";
+        }
+
+        private void MainForm_DragEnter( object sender, DragEventArgs e ) {
+            e.Effect = DragDropEffects.All;
+        }
+
+        private void MainForm_DragDrop( object sender, DragEventArgs e ) {
+            DragDropFile( e );
+        }
+
+        void DragDropFile( DragEventArgs e ) {
+            if ( e.Data.GetDataPresent( DataFormats.FileDrop, false ) ) {
+                String[] files = (String[])e.Data.GetData( DataFormats.FileDrop );
+                foreach ( String s in files ) {
+                    var fi = new FileInfo( s );
+                    if ( !fs.Exists( m => { return m.FullName == fi.FullName; } ) ) {
+                        fs.Add( fi );
+                    }
+                }
+            }
+            RefreshListbox();
+        }
+
+        private void MainForm_DragOver( object sender, DragEventArgs e ) {
+            e.Effect = DragDropEffects.All;
+        }
+
+        private void lbox_Files_DragOver( object sender, DragEventArgs e ) {
+            e.Effect = DragDropEffects.All;
+        }
+
+        private void lbox_Files_DragEnter( object sender, DragEventArgs e ) {
+            e.Effect = DragDropEffects.All;
+        }
+
+        private void bgw_ExcelGenerate_RunWorkerCompleted( object sender, System.ComponentModel.RunWorkerCompletedEventArgs e ) {
+            progressBar_Worker.Value = 100;
+            lb_Status.Text = $"完成";
+        }
+
+        private void btn_OpenExcelPath_Click( object sender, EventArgs e ) {
+            Process.Start( Environment.CurrentDirectory );
         }
     }
 }
