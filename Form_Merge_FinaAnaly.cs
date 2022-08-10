@@ -3,17 +3,40 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using Microsoft.Office.Interop.Excel;
 
 namespace MergeExcel {
     public partial class Form_Merge_FinaAnaly : Form {
+        static public void mergeCell( Worksheet ws, int r1, int c1, int r2, int c2 ) {
+            ws.Range[ws.Cells[r1, c1], ws.Cells[r2, c2]].Merge();
+        }
+        static public void setCellValue( Range c, string v, bool isBold = false, XlHAlign align = XlHAlign.xlHAlignLeft, bool isBordered = false ) {
+            c.Value = v;
+            c.Font.Bold = isBold;
+            c.HorizontalAlignment = align;
+            c.Style = "Comma";
+        }
         public Form_Merge_FinaAnaly() {
             InitializeComponent();
         }
+        public void CreateBSTree() {
+            TreeNode BalanceSheet;
+            BalanceSheet = new TreeNode( "资产负债表" );
+            var ass = BalanceSheet.Nodes.Add( "资产总计" );
+            ass.Nodes.Add( "流动资产合计" );
+            ass.Nodes.Add( "非流动资产合计" );
 
+            var liaProp = BalanceSheet.Nodes.Add( "负债和所有者权益（或股东权益）总计" );
+            var lia = liaProp.Nodes.Add( "负债合计" );
+            lia.Nodes.Add( "流动负债合计" );
+            lia.Nodes.Add( "非流动负债合计" );
+            liaProp.Nodes.Add( "所有者权益（或股东权益）合计" );
+        }
         public class Report {
             /// <summary>
             /// 资产负债表采用
@@ -27,10 +50,10 @@ namespace MergeExcel {
                 ass.Nodes.Add( "非流动资产合计" );
 
                 var liaProp = BalanceSheet.Nodes.Add( "负债和所有者权益（或股东权益）总计" );
-                liaProp.Nodes.Add( "所有者权益（或股东权益）合计" );
                 var lia = liaProp.Nodes.Add( "负债合计" );
-                lia.Nodes.Add( "非流动负债合计" );
                 lia.Nodes.Add( "流动负债合计" );
+                lia.Nodes.Add( "非流动负债合计" );
+                liaProp.Nodes.Add( "所有者权益（或股东权益）合计" );
             }
             /// <summary>
             /// 年报年份
@@ -45,10 +68,81 @@ namespace MergeExcel {
             /// 报表列表
             /// </summary>
             public List<FinanState> FinanStates { get; set; } = new List<FinanState>();
+
+
             /// <summary>
             /// 报表 分为 资产负债 利润 现金流量
             /// </summary>
             public class FinanState {
+                string removeWhitespace( string str ) {
+                    return Regex.Replace( str, @"\s+", "" );
+                }
+                public List<int> Fl_RigidLia { get; set; } = new List<int>();
+                public void PrintBS( Worksheet ws, TreeNode root, ref int row, int col = 2 ) {
+                    foreach ( TreeNode node in root.Nodes ) {
+                        var section = Sections.Find( m => removeWhitespace( m.SumName ) == node.Text );
+                        Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, 1], node.Text, true );
+                        Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, col], ( section.SumValue / 10000 ).ToString(), true );
+                        row++;
+                        foreach ( var kv in section.States ) {
+                            Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, 1], procRigidLia( removeWhitespace( kv.Key ), row ) );
+                            Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, col], ( kv.Value / 10000 ).ToString(), false, XlHAlign.xlHAlignCenter );
+                            row++;
+                        }
+                        if ( node.Text == "非流动负债合计" ) {
+                            setCellValue( ws.Cells[row, 1], "刚性负债合计＝①＋②＋③＋④＋⑤" );
+                            ws.Cells[row, col].Formula = Formula_RigidLia( col );
+                        }
+                        PrintBS( ws, node, ref row, col );
+                    }
+                }
+                public void PrintIC( Worksheet ws, TreeNode root, ref int row, int col = 2 ) {
+                    foreach ( TreeNode node in root.Nodes ) {
+                        var section = Sections.Find( m => removeWhitespace( m.SumName ) == node.Text );
+                        Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, 1], node.Text, true );
+                        Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, col], ( section.SumValue / 10000 ).ToString(), true );
+                        row++;
+                        foreach ( var kv in section.States ) {
+                            root.Nodes.Add( removeWhitespace( kv.Key ), ( kv.Value / 10000 ).ToString() );
+                            Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, 1], removeWhitespace( kv.Key ) );
+                            Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, col], ( kv.Value / 10000 ).ToString(), false, XlHAlign.xlHAlignCenter );
+                            row++;
+                        }
+                        PrintIC( ws, node, ref row, col );
+                    }
+                }
+                public string Formula_RigidLia( int col ) {
+                    string r = "=";
+                    string C = Convert.ToString( System.Text.Encoding.ASCII.GetString( new byte[1] { (byte)Convert.ToInt32( col + 64 ) } ) );
+                    foreach ( var c in Fl_RigidLia ) {
+                        r += $"{C}{c}+";
+                    }
+                    r += "0";
+                    return r;
+                }
+                public string procRigidLia( string name, int col ) {
+                    switch ( name ) {
+                        case "短期借款":
+                            name += "①";
+                            break;
+                        case "应付票据":
+                            name += "②";
+                            break;
+                        case "一年内到期的非流动负债":
+                            name += "③";
+                            break;
+                        case "长期借款":
+                            name += "④";
+                            break;
+                        case "应付债券":
+                            name += "⑤";
+                            break;
+                        default:
+                            return name;
+                    }
+                    Fl_RigidLia.Add( col );
+                    return name;
+                }
                 public readonly string MaskName;
                 public StateSection GetSection( string name ) {
                     return Sections.Find( m => m.Name.Contains( name ) );
@@ -226,7 +320,7 @@ namespace MergeExcel {
                     openFileDialog.InitialDirectory = "c:\\";
                     openFileDialog.RestoreDirectory = true;
 
-                    filePath = $@"C:\Users\cyf-thinkpad\Desktop\授信财务报表\2021 ({i}).xlsx";
+                    filePath = $@"C:\Users\cyf-thinkpad\Desktop\授信财务报表\2021\2021 ({i}).xlsx";
                     string rawfp = filePath;
                     filePath += ".copy.xlsx";
                     if ( File.Exists( filePath ) ) {
@@ -272,6 +366,35 @@ namespace MergeExcel {
                     y.FinanStates.Add( fs );
                 }
             }
+
+            #region SAVE_ANALY
+            Microsoft.Office.Interop.Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
+            var xlWorkBook = xlApp.Workbooks.Add();
+            var ws = xlWorkBook.Worksheets.get_Item( 1 ) as Worksheet;
+            // Cells[Row, Col]
+            // 绘制表头
+            int j = 2;
+            setCellValue( ws.Cells[1, 1], "近三年主要财务数据列表：", true );
+            setCellValue( ws.Cells[2, 1], "财务分析表", true, XlHAlign.xlHAlignCenter );
+            mergeCell( ws, 2, 1, 2, 5 );
+            setCellValue( ws.Cells[3, 1], "项目（单位：人民币万元）" );
+            setCellValue( ws.Cells[4, 1], "报表类型（单一/合并）" );
+            setCellValue( ws.Cells[5, 1], "是否审计" );
+            setCellValue( ws.Cells[6, 1], "审计单位" );
+            setCellValue( ws.Cells[7, 1], "审计意见类型" );
+            int row = 8;
+            var bs = y.FinanStates.Find( m => m.Name == "资产负债表" );
+            bs.PrintBS( ws, y.BalanceSheet, ref row, j );
+            tv_zcfz.Nodes.Add( y.BalanceSheet );
+            // bs.PrintIC( ws, y.BalanceSheet, ref row, j );
+
+            // eWSheet.Range[eWSheet.Cells[1, 1], eWSheet.Cells[4, 1]].Merge(); 合并单元格
+            // sheet.Cells[rowCount, column].Formula = string.Format("=SUM(G1:G{0})", rowCount); 公式
+            // 自适应
+            ws.Cells.AutoFit();
+            // xlWorkBook.SaveCopyAs( $"./test.xlsx" );
+            Process.Start( $@"C:\Users\cyf-thinkpad\Documents\test.xlsx" );
+            #endregion
         }
     }
 }
