@@ -82,6 +82,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EUtil.cs" />
+    <Compile Include="FAModel.cs" />
     <Compile Include="Form_MergeExcel.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -99,6 +100,12 @@
     </Compile>
     <Compile Include="Form_Merge_FinaAnaly.Designer.cs">
       <DependentUpon>Form_Merge_FinaAnaly.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form_Merge_FinaAnalyPlus.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form_Merge_FinaAnalyPlus.Designer.cs">
+      <DependentUpon>Form_Merge_FinaAnalyPlus.cs</DependentUpon>
     </Compile>
     <Compile Include="Form_RegexExam.cs">
       <SubType>Form</SubType>
@@ -128,6 +135,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Form_Merge_FinaAnaly.resx">
       <DependentUpon>Form_Merge_FinaAnaly.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form_Merge_FinaAnalyPlus.resx">
+      <DependentUpon>Form_Merge_FinaAnalyPlus.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Form_RegexExam.resx">
       <DependentUpon>Form_RegexExam.cs</DependentUpon>

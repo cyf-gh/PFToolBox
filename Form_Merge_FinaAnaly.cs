@@ -12,6 +12,14 @@ using Microsoft.Office.Interop.Excel;
 
 namespace MergeExcel {
     public partial class Form_Merge_FinaAnaly : Form {
+        static public Dictionary<string, string> Aliases = new Dictionary<string, string>();
+        public Form_Merge_FinaAnaly() {
+            Aliases[" 一、营业总收入"] = "营业收入";
+            Aliases["减：营业成本"] = "营业成本";
+            Aliases["负债和所有者权益（或股东权益）总计"] = "负债和所有者权益总计";
+            Aliases["所有者权益（或股东权益）合计"] = "所有者权益合计";
+            InitializeComponent();
+        }
         static public void mergeCell( Worksheet ws, int r1, int c1, int r2, int c2 ) {
             ws.Range[ws.Cells[r1, c1], ws.Cells[r2, c2]].Merge();
         }
@@ -19,29 +27,14 @@ namespace MergeExcel {
             c.Value = v;
             c.Font.Bold = isBold;
             c.HorizontalAlignment = align;
-            c.Style = "Comma";
-        }
-        public Form_Merge_FinaAnaly() {
-            InitializeComponent();
-        }
-        public void CreateBSTree() {
-            TreeNode BalanceSheet;
-            BalanceSheet = new TreeNode( "资产负债表" );
-            var ass = BalanceSheet.Nodes.Add( "资产总计" );
-            ass.Nodes.Add( "流动资产合计" );
-            ass.Nodes.Add( "非流动资产合计" );
-
-            var liaProp = BalanceSheet.Nodes.Add( "负债和所有者权益（或股东权益）总计" );
-            var lia = liaProp.Nodes.Add( "负债合计" );
-            lia.Nodes.Add( "流动负债合计" );
-            lia.Nodes.Add( "非流动负债合计" );
-            liaProp.Nodes.Add( "所有者权益（或股东权益）合计" );
+            // c.Style = "Comma";
         }
         public class Report {
             /// <summary>
             /// 资产负债表采用
             /// </summary>
-            public TreeNode BalanceSheet { get; set; }
+            public TreeNode BalanceSheet;
+            public TreeNode IncomeSheet;
             // public FinanState.StateSection 
             public Report() {
                 BalanceSheet = new TreeNode( "资产负债表" );
@@ -69,22 +62,48 @@ namespace MergeExcel {
             /// </summary>
             public List<FinanState> FinanStates { get; set; } = new List<FinanState>();
 
+            public FinanState GetBS() {
+                return FinanStates.Find( m => m.Name == "资产负债表" );
+            }
+
+            public FinanState GetIC() {
+                return FinanStates.Find( m => m.Name == "损益表" );
+            }
+
+            public FinanState GetCA() {
+                return FinanStates.Find( m => m.Name == "现金流量表" );
+            }
 
             /// <summary>
             /// 报表 分为 资产负债 利润 现金流量
             /// </summary>
             public class FinanState {
+                public class ViewModel {
+                    public string Name { get; set; } = string.Empty;
+                    public double Value { get; set; }
+                    public bool IsBold { get; set; } = false;
+                    public string Fomula { get; set; } = string.Empty;
+                    public bool Visiable { get; set; } = true;
+                    public string Alias { get; set; } = string.Empty;
+                }
                 string removeWhitespace( string str ) {
+                    if ( str == null ) {
+                        return String.Empty;
+                    }
                     return Regex.Replace( str, @"\s+", "" );
                 }
+                public Dictionary<string, ViewModel> BSS = new Dictionary<string, ViewModel>();
                 public List<int> Fl_RigidLia { get; set; } = new List<int>();
                 public void PrintBS( Worksheet ws, TreeNode root, ref int row, int col = 2 ) {
                     foreach ( TreeNode node in root.Nodes ) {
                         var section = Sections.Find( m => removeWhitespace( m.SumName ) == node.Text );
+                        section = section == null ? Sections.Find( m => removeWhitespace( m.SumName ) == Aliases[node.Text] ) : section;
+                        // BSS.Add( node.Text, new ViewModel { Name = node.Text, IsBold = true, Value = ( section.SumValue / 10000 ) } ); 
                         Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, 1], node.Text, true );
                         Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, col], ( section.SumValue / 10000 ).ToString(), true );
                         row++;
                         foreach ( var kv in section.States ) {
+                            // BSS.Add( kv.Key, new ViewModel { Name = removeWhitespace( kv.Key ), IsBold = false, Value = ( kv.Value / 10000 ) } );
                             Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, 1], procRigidLia( removeWhitespace( kv.Key ), row ) );
                             Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, col], ( kv.Value / 10000 ).ToString(), false, XlHAlign.xlHAlignCenter );
                             row++;
@@ -92,24 +111,24 @@ namespace MergeExcel {
                         if ( node.Text == "非流动负债合计" ) {
                             setCellValue( ws.Cells[row, 1], "刚性负债合计＝①＋②＋③＋④＋⑤" );
                             ws.Cells[row, col].Formula = Formula_RigidLia( col );
+                            row++;
                         }
                         PrintBS( ws, node, ref row, col );
                     }
                 }
                 public void PrintIC( Worksheet ws, TreeNode root, ref int row, int col = 2 ) {
-                    foreach ( TreeNode node in root.Nodes ) {
-                        var section = Sections.Find( m => removeWhitespace( m.SumName ) == node.Text );
-                        Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, 1], node.Text, true );
-                        Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, col], ( section.SumValue / 10000 ).ToString(), true );
-                        row++;
-                        foreach ( var kv in section.States ) {
-                            root.Nodes.Add( removeWhitespace( kv.Key ), ( kv.Value / 10000 ).ToString() );
-                            Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, 1], removeWhitespace( kv.Key ) );
-                            Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, col], ( kv.Value / 10000 ).ToString(), false, XlHAlign.xlHAlignCenter );
-                            row++;
-                        }
-                        PrintIC( ws, node, ref row, col );
-                    }
+                    //foreach ( TreeNode node in root.Nodes ) {
+                    //    var section = Sections.Find( m => removeWhitespace( m.SumName ) == node.Text );
+                    //    Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, 1], node.Text, true );
+                    //    Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, col], ( section.SumValue / 10000 ).ToString(), true );
+                    //    row++;
+                    //    foreach ( var kv in section.States ) {
+                    //        Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, 1], removeWhitespace( kv.Key ) );
+                    //        Form_Merge_FinaAnaly.setCellValue( ws.Cells[row, col], ( kv.Value / 10000 ).ToString(), false, XlHAlign.xlHAlignCenter );
+                    //        row++;
+                    //    }
+                    //    PrintIC( ws, node, ref row, col );
+                    //}
                 }
                 public string Formula_RigidLia( int col ) {
                     string r = "=";
@@ -263,7 +282,7 @@ namespace MergeExcel {
                     /// <param name="s"></param>
                     /// <returns>true表示是科目块标题</returns>
                     public bool TrySetName( string name, double Value, ref List<StateSection> sections ) {
-                        Console.WriteLine( Name );
+                        // Console.WriteLine( Name );
                         var sectionMarks = new char[] { '：', ':', '、' };
                         foreach ( var sm in sectionMarks ) {
                             if ( name.Contains( sm ) ) {
@@ -313,58 +332,61 @@ namespace MergeExcel {
         FileStream stream;
         IExcelDataReader reader;
         private void Form_Merge_FinaAnaly_Load( object sender, EventArgs e ) {
-            var y = new Report();
-            for ( int i = 1; i < 4; i++ ) {
-                using ( OpenFileDialog openFileDialog = new OpenFileDialog() ) {
-                    #region
-                    openFileDialog.InitialDirectory = "c:\\";
-                    openFileDialog.RestoreDirectory = true;
+            var ys = new List<Report>();
+            for ( int ii = 0; ii < 4; ii++ ) {
+                var y = new Report() { Year = ( 2019 + ii ).ToString() };
+                for ( int i = 1; i < 4; i++ ) {
+                    using ( OpenFileDialog openFileDialog = new OpenFileDialog() ) {
+                        #region
+                        openFileDialog.InitialDirectory = "c:\\";
+                        openFileDialog.RestoreDirectory = true;
 
-                    filePath = $@"C:\Users\cyf-thinkpad\Desktop\授信财务报表\2021\2021 ({i}).xlsx";
-                    string rawfp = filePath;
-                    filePath += ".copy.xlsx";
-                    if ( File.Exists( filePath ) ) {
-                        File.Delete( filePath );
+                        filePath = $@"C:\Users\cyf-thinkpad\Desktop\1\{2019 + ii}\{2019 + ii} ({i}).xlsx";
+                        string rawfp = filePath;
+                        filePath += ".copy.xlsx";
+                        if ( File.Exists( filePath ) ) {
+                            File.Delete( filePath );
+                        }
+                        File.Copy( rawfp, filePath );
+                        try {
+                            stream = File.Open( filePath, FileMode.Open, FileAccess.Read );
+                        } catch ( Exception ex ) {
+                            MessageBox.Show( $"{ex.Message}\n请检查excel表格是否在打开状态，或excel表格文件是否正确再重试" );
+                            return;
+                        }
+                        // Auto-detect format, supports:
+                        //  - Binary Excel files (2.0-2003 format; *.xls)
+                        //  - OpenXml Excel files (2007 format; *.xlsx, *.xlsb)
+                        reader = ExcelReaderFactory.CreateReader( stream );
+                        // 2. Use the AsDataSet extension method
+                        // var result = excelDataReader.AsDataSet();
+                        // The result of each spreadsheet is in result.Tables
+                        var result = reader.AsDataSet();
+                        var t = result.Tables;
+                        var defaultT = t[0];
+                        var Rows = defaultT.Rows;
+                        #endregion
+                        var r1 = Rows[0].ItemArray;
+                        var fs = new Report.FinanState();
+                        fs.Name = r1[0] as string;
+                        switch ( fs.Name ) {
+                            case "资产负债表":
+                                fs.ProcAL( Rows )     // 处理资产部分 
+                                  .ProcAL( Rows, 4 ); // 处理负债部分
+                                break;
+                            case "现金流量表":
+                                fs.ProcCa( Rows );
+                                break;
+                            case "损益表":
+                                fs.ProcIC( Rows );
+                                break;
+                            default:
+                                break;
+                        }
+                        y.FinanStates.Add( fs );
                     }
-                    File.Copy( rawfp, filePath );
-                    try {
-                        stream = File.Open( filePath, FileMode.Open, FileAccess.Read );
-                    } catch ( Exception ex ) {
-                        MessageBox.Show( $"{ex.Message}\n请检查excel表格是否在打开状态，或excel表格文件是否正确再重试" );
-                        return;
-                    }
-                    // Auto-detect format, supports:
-                    //  - Binary Excel files (2.0-2003 format; *.xls)
-                    //  - OpenXml Excel files (2007 format; *.xlsx, *.xlsb)
-                    reader = ExcelReaderFactory.CreateReader( stream );
-                    // 2. Use the AsDataSet extension method
-                    // var result = excelDataReader.AsDataSet();
-                    // The result of each spreadsheet is in result.Tables
-                    var result = reader.AsDataSet();
-                    var t = result.Tables;
-                    var defaultT = t[0];
-                    var Rows = defaultT.Rows;
-                    #endregion
-                    var r1 = Rows[0].ItemArray;
-                    var ys = new List<Report>();
-                    var fs = new Report.FinanState();
-                    fs.Name = r1[0] as string;
-                    switch ( fs.Name ) {
-                        case "资产负债表":
-                            fs.ProcAL( Rows )     // 处理资产部分 
-                              .ProcAL( Rows, 4 ); // 处理负债部分
-                            break;
-                        case "现金流量表":
-                            fs.ProcCa( Rows );
-                            break;
-                        case "损益表":
-                            fs.ProcIC( Rows );
-                            break;
-                        default:
-                            break;
-                    }
-                    y.FinanStates.Add( fs );
                 }
+                ys.Add( y );
             }
 
             #region SAVE_ANALY
@@ -373,7 +395,6 @@ namespace MergeExcel {
             var ws = xlWorkBook.Worksheets.get_Item( 1 ) as Worksheet;
             // Cells[Row, Col]
             // 绘制表头
-            int j = 2;
             setCellValue( ws.Cells[1, 1], "近三年主要财务数据列表：", true );
             setCellValue( ws.Cells[2, 1], "财务分析表", true, XlHAlign.xlHAlignCenter );
             mergeCell( ws, 2, 1, 2, 5 );
@@ -382,17 +403,24 @@ namespace MergeExcel {
             setCellValue( ws.Cells[5, 1], "是否审计" );
             setCellValue( ws.Cells[6, 1], "审计单位" );
             setCellValue( ws.Cells[7, 1], "审计意见类型" );
-            int row = 8;
-            var bs = y.FinanStates.Find( m => m.Name == "资产负债表" );
-            bs.PrintBS( ws, y.BalanceSheet, ref row, j );
-            tv_zcfz.Nodes.Add( y.BalanceSheet );
-            // bs.PrintIC( ws, y.BalanceSheet, ref row, j );
+            int j = 2;
+            foreach ( var y in ys ) {
+                int row = 8;
+                setCellValue( ws.Cells[3, j], $"{y.Year}年12月" );
+                var bs = y.FinanStates.Find( m => m.Name == "资产负债表" );
+                bs.PrintBS( ws, y.BalanceSheet, ref row, j );
+                // bs.PrintIC( ws, y.BalanceSheet, ref row, j );
+                var a = bs.BSS.Count;
+                ++j;
+            }
+            // tv_zcfz.Nodes.Add( y.BalanceSheet );
+            // 
 
             // eWSheet.Range[eWSheet.Cells[1, 1], eWSheet.Cells[4, 1]].Merge(); 合并单元格
             // sheet.Cells[rowCount, column].Formula = string.Format("=SUM(G1:G{0})", rowCount); 公式
             // 自适应
             ws.Cells.AutoFit();
-            // xlWorkBook.SaveCopyAs( $"./test.xlsx" );
+            xlWorkBook.SaveCopyAs( $"./test.xlsx" );
             Process.Start( $@"C:\Users\cyf-thinkpad\Documents\test.xlsx" );
             #endregion
         }
