@@ -174,7 +174,7 @@ namespace MergeExcel {
                     var f = fff[i];
                     xlWorkSheet.Cells[i + 2, 1] = f.name;
                     xlWorkSheet.Cells[i + 2, 2] = f.Content;
-                    xlWorkSheet.Cells[i + 2, 3] = f.ZPScore;
+                    xlWorkSheet.Cells[i + 2, 3] = f.ZPScore;    
                     xlWorkSheet.Cells[i + 2, 4] = f.ZPContent;
                 }
                 for ( int i = 0; i < rrs.Count; i++ ) {

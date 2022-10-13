@@ -90,7 +90,25 @@ namespace MergeExcel {
                     continue;
                 } else {
                     // 匹配选项
-                    var choicePattern = new Regex( @"(?<ag>[A-G])(、|\.)[\s]*(?<desc>[\S]+)[\s]*" );
+                    var choicePattern = new Regex( @"上海浦东发展银行业务凭证/回单
+交易日期：(?<jyrq>.+?)回单编号：(?<hdbh>.+?) 交易流水号：(?<jylsh>.+?)
+网点编号：(?<wdbh>.+?) 交易名称：(?<jymc>.+?)
+回单类型：(?<hdlx>.+?)
+收款人户名：(?<skrhm>.+?)
+收款账号：(?<skzh>.+?)
+收款银行：(?<skyh>.+?)
+付款人户名：(?<fkrhm>.+?)
+付款账号：(?<fkzh>.+?)
+付款银行：(?<fkyh>.+?)
+收付款标志：(?<sfkbz>.+?)
+交易金额：(?<jyje>.+?) (?<jyje_je>.+?)
+(?<jyrq2>.+?)
+交易大写金额： (?<jydxje>.+?)
+凭证编号：
+(?<pzbh>.+?)
+起息日：(?<qxr>.+?)
+摘要：(?<zy>.+?)
+可通过我行官网、VTM等渠道录入电子印章序列号验证回单信息。" );
                     MatchCollection mc = choicePattern.Matches( ll );
                     foreach ( Match mcc in mc ) {
                         if ( mcc.Success ) {
