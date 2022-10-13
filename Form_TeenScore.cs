@@ -36,7 +36,7 @@ namespace MergeExcel {
             public string BeRWorkerName;
             public string Description;
         }
-        string co = "（2022年1季度）";
+        string co = "（2022年3季度）";
         string filePath;
         FileStream stream;
         IExcelDataReader excelDataReader = null;
@@ -45,7 +45,7 @@ namespace MergeExcel {
                 openFileDialog.InitialDirectory = "c:\\";
                 openFileDialog.RestoreDirectory = true;
 
-                filePath = @"C:\Users\cyf-desktop\Desktop\158059950_2_青年员工积分上报（2022一季度）_42_38.xlsx";
+                filePath = @"C:\Users\cyf-desktop\Desktop\187229695_2_青年员工积分上报（2022三季度）_29_29.xlsx";
                 string rawfp = filePath;
                 filePath += ".copy.xlsx";
                 if ( File.Exists( filePath ) ) {
@@ -163,12 +163,12 @@ namespace MergeExcel {
                 xlWorkSheet.Cells[1, 3] = "自评分";
                 xlWorkSheet.Cells[1, 4] = "项目内容";
                 xlWorkSheet.Cells[1, 5] = "条线打分";
-                xlWorkSheet.Cells[1, 6] = "打分理由";
+                //xlWorkSheet.Cells[1, 6] = "打分理由";
                 xlWorkSheetReco.Cells[1, 1] = "推荐人";
                 xlWorkSheetReco.Cells[1, 2] = "被推荐人";
                 xlWorkSheetReco.Cells[1, 3] = "推荐理由";
-                xlWorkSheetReco.Cells[1, 4] = "条线打分";
-                xlWorkSheetReco.Cells[1, 5] = "打分理由";
+                //xlWorkSheetReco.Cells[1, 4] = "条线打分";
+                //xlWorkSheetReco.Cells[1, 5] = "打分理由";
 
                 for ( int i = 0; i < fff.Count; i++ ) {
                     var f = fff[i];
@@ -183,7 +183,7 @@ namespace MergeExcel {
                     xlWorkSheetReco.Cells[i + 2, 2] = r.BeRWorkerName;
                     xlWorkSheetReco.Cells[i + 2, 3] = r.Description;
                 }
-                File.Delete( "./{name}.xlsx" );
+                File.Delete( $"./{name}.xlsx" );
                 xlWorkBook.SaveCopyAs( $"./{name}.xlsx" );
             }
         }
