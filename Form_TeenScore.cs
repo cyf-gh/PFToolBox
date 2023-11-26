@@ -36,7 +36,7 @@ namespace MergeExcel {
             public string BeRWorkerName;
             public string Description;
         }
-        string co = "（2022年3季度）";
+        string co = "（2023年3季度）";
         string filePath;
         FileStream stream;
         IExcelDataReader excelDataReader = null;
@@ -45,7 +45,7 @@ namespace MergeExcel {
                 openFileDialog.InitialDirectory = "c:\\";
                 openFileDialog.RestoreDirectory = true;
 
-                filePath = @"C:\Users\cyf-desktop\Desktop\187229695_2_青年员工积分上报（2022三季度）_29_29.xlsx";
+                filePath = @"C:\Users\cyf-desktop\Documents\23.3.xlsx";
                 string rawfp = filePath;
                 filePath += ".copy.xlsx";
                 if ( File.Exists( filePath ) ) {
