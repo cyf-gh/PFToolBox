@@ -36,8 +36,10 @@ namespace MergeExcel {
             public string BeRWorkerName;
             public string Description;
         }
-        string co = "（2023年3季度）";
-        string filePath;
+        #region 修改这两个值
+        string co = "（2024年3季度）";
+        string filePath = @"C:\Users\caoyf\Documents\24.3.xlsx";
+        #endregion
         FileStream stream;
         IExcelDataReader excelDataReader = null;
         private void Form_TeenScore_Load( object sender, EventArgs e ) {
@@ -45,7 +47,6 @@ namespace MergeExcel {
                 openFileDialog.InitialDirectory = "c:\\";
                 openFileDialog.RestoreDirectory = true;
 
-                filePath = @"C:\Users\cyf-desktop\Documents\23.3.xlsx";
                 string rawfp = filePath;
                 filePath += ".copy.xlsx";
                 if ( File.Exists( filePath ) ) {
